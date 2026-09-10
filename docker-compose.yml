@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: financas_user
+      POSTGRES_PASSWORD: financas_pass
+      POSTGRES_DB: financas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - financas_data:/var/lib/postgresql/data
+
+volumes:
+  financas_data:
