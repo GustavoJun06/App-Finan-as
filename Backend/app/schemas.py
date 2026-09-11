@@ -92,3 +92,22 @@ class MetaResponse(BaseModel):
     prazo: date
     valor_atual: float  # calculado: saldo total das contas do usuário
     progresso_percentual: float  # calculado: valor_atual / valor_alvo * 100
+
+
+# ---------- Dashboard ----------
+
+class ResumoPorCategoria(BaseModel):
+    categoria: str
+    total: float
+
+
+class ResumoMensal(BaseModel):
+    mes: str  # formato "2026-09"
+    receitas: float
+    despesas: float
+
+
+class DashboardResponse(BaseModel):
+    saldo_total: float
+    gastos_por_categoria: list[ResumoPorCategoria]
+    evolucao_mensal: list[ResumoMensal]

@@ -279,3 +279,64 @@ def deletar_meta(
 
     db.delete(meta)
     db.commit()
+
+
+# ==================== DASHBOARD ====================
+
+@router.get("/dashboard", response_model=schemas.DashboardResponse)
+def obter_dashboard(
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    # Saldo total: mesma lógica usada nas metas
+    saldo_total = _calcular_saldo_total(usuario_atual.id, db)
+
+    # Todas as transações do usuário (via join com Conta, igual fizemos em listar_transacoes)
+    transacoes = (
+        db.query(models.Transacao)
+        .join(models.Conta)
+        .filter(models.Conta.usuario_id == usuario_atual.id)
+        .all()
+    )
+
+    # --- Agrupamento por categoria (apenas despesas, que é o mais útil no dashboard) ---
+    totais_por_categoria: dict[str, Decimal] = {}
+    for transacao in transacoes:
+        if transacao.tipo != "despesa":
+            continue
+        nome_categoria = transacao.categoria.nome
+        totais_por_categoria[nome_categoria] = (
+            totais_por_categoria.get(nome_categoria, Decimal("0")) + transacao.valor
+        )
+
+    gastos_por_categoria = [
+        schemas.ResumoPorCategoria(categoria=nome, total=float(total))
+        for nome, total in totais_por_categoria.items()
+    ]
+
+    # --- Evolução mensal: soma de receitas e despesas por mês (formato "AAAA-MM") ---
+    resumo_mensal: dict[str, dict[str, Decimal]] = {}
+    for transacao in transacoes:
+        chave_mes = transacao.data.strftime("%Y-%m")
+        if chave_mes not in resumo_mensal:
+            resumo_mensal[chave_mes] = {"receitas": Decimal("0"), "despesas": Decimal("0")}
+
+        if transacao.tipo == "receita":
+            resumo_mensal[chave_mes]["receitas"] += transacao.valor
+        else:
+            resumo_mensal[chave_mes]["despesas"] += transacao.valor
+
+    evolucao_mensal = [
+        schemas.ResumoMensal(
+            mes=mes,
+            receitas=float(valores["receitas"]),
+            despesas=float(valores["despesas"]),
+        )
+        for mes, valores in sorted(resumo_mensal.items())
+    ]
+
+    return schemas.DashboardResponse(
+        saldo_total=float(saldo_total),
+        gastos_por_categoria=gastos_por_categoria,
+        evolucao_mensal=evolucao_mensal,
+    )
