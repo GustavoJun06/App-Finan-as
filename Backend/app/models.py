@@ -13,6 +13,7 @@ class Usuario(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
+    senha_hash = Column(String, nullable=False)
 
     contas = relationship("Conta", back_populates="usuario")
     metas = relationship("Meta", back_populates="usuario")
