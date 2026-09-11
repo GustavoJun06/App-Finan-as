@@ -111,3 +111,26 @@ class DashboardResponse(BaseModel):
     saldo_total: float
     gastos_por_categoria: list[ResumoPorCategoria]
     evolucao_mensal: list[ResumoMensal]
+
+
+# ---------- Transação Recorrente ----------
+
+class TransacaoRecorrenteCreate(BaseModel):
+    conta_id: uuid.UUID
+    categoria_id: uuid.UUID
+    valor: float
+    tipo: str  # "receita" ou "despesa"
+    dia_do_mes: int  # de 1 a 28
+
+
+class TransacaoRecorrenteResponse(BaseModel):
+    id: uuid.UUID
+    conta_id: uuid.UUID
+    categoria_id: uuid.UUID
+    valor: float
+    tipo: str
+    dia_do_mes: int
+    ativa: bool
+
+    class Config:
+        from_attributes = True

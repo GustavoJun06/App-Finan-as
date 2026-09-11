@@ -1,6 +1,6 @@
 import uuid
 from datetime import date
-from sqlalchemy import Column, String, ForeignKey, Numeric, Date
+from sqlalchemy import Column, String, ForeignKey, Numeric, Date, Integer, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -64,3 +64,19 @@ class Meta(Base):
     prazo = Column(Date, nullable=False)
 
     usuario = relationship("Usuario", back_populates="metas")
+
+
+class TransacaoRecorrente(Base):
+    __tablename__ = "transacoes_recorrentes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conta_id = Column(UUID(as_uuid=True), ForeignKey("contas.id"), nullable=False)
+    categoria_id = Column(UUID(as_uuid=True), ForeignKey("categorias.id"), nullable=False)
+    valor = Column(Numeric(10, 2), nullable=False)
+    tipo = Column(String, nullable=False)  # "receita" ou "despesa"
+    dia_do_mes = Column(Integer, nullable=False)  # dia em que a transação deve ser gerada (1-28)
+    ativa = Column(Boolean, default=True, nullable=False)
+    ultima_execucao = Column(String, nullable=True)  # guarda "AAAA-MM" do último mês processado
+
+    conta = relationship("Conta")
+    categoria = relationship("Categoria")

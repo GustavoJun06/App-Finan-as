@@ -125,8 +125,6 @@ def criar_transacao(
     if dados.tipo not in ("receita", "despesa"):
         raise HTTPException(status_code=422, detail="tipo deve ser 'receita' ou 'despesa'")
 
-    # Garante que a conta pertence ao usuário logado (evita lançar
-    # transação na conta de outra pessoa)
     conta = _buscar_conta_do_usuario(dados.conta_id, usuario_atual.id, db)
 
     categoria = db.query(models.Categoria).filter(models.Categoria.id == dados.categoria_id).first()
@@ -142,8 +140,6 @@ def criar_transacao(
     )
     db.add(nova_transacao)
 
-    # Atualiza o saldo da conta: receita soma, despesa subtrai
-    # (convertendo para Decimal, que é o tipo usado no banco para valores monetários)
     valor_decimal = Decimal(str(dados.valor))
     if dados.tipo == "receita":
         conta.saldo += valor_decimal
@@ -164,7 +160,6 @@ def listar_transacoes(
     usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
     db: Session = Depends(get_db),
 ):
-    # Começamos filtrando só transações de contas que pertencem ao usuário logado
     query = (
         db.query(models.Transacao)
         .join(models.Conta)
@@ -198,7 +193,6 @@ def deletar_transacao(
     if not transacao:
         raise HTTPException(status_code=404, detail="Transação não encontrada")
 
-    # Reverte o efeito da transação no saldo antes de apagar
     conta = transacao.conta
     valor_decimal = Decimal(str(transacao.valor))
     if transacao.tipo == "receita":
@@ -211,8 +205,6 @@ def deletar_transacao(
 
 
 # ==================== METAS ====================
-# O progresso de uma meta é calculado comparando o valor_alvo com o
-# saldo total (soma de todas as contas) do usuário no momento da consulta.
 
 def _calcular_saldo_total(usuario_id: uuid.UUID, db: Session) -> Decimal:
     contas = db.query(models.Conta).filter(models.Conta.usuario_id == usuario_id).all()
@@ -223,7 +215,7 @@ def _montar_resposta_meta(meta: models.Meta, saldo_total: Decimal) -> schemas.Me
     valor_atual = float(saldo_total)
     valor_alvo = float(meta.valor_alvo)
     progresso = (valor_atual / valor_alvo * 100) if valor_alvo > 0 else 0
-    progresso = min(progresso, 100)  # trava em 100% mesmo se já ultrapassou a meta
+    progresso = min(progresso, 100)
 
     return schemas.MetaResponse(
         id=meta.id,
@@ -288,10 +280,8 @@ def obter_dashboard(
     usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
     db: Session = Depends(get_db),
 ):
-    # Saldo total: mesma lógica usada nas metas
     saldo_total = _calcular_saldo_total(usuario_atual.id, db)
 
-    # Todas as transações do usuário (via join com Conta, igual fizemos em listar_transacoes)
     transacoes = (
         db.query(models.Transacao)
         .join(models.Conta)
@@ -299,7 +289,6 @@ def obter_dashboard(
         .all()
     )
 
-    # --- Agrupamento por categoria (apenas despesas, que é o mais útil no dashboard) ---
     totais_por_categoria: dict[str, Decimal] = {}
     for transacao in transacoes:
         if transacao.tipo != "despesa":
@@ -314,7 +303,6 @@ def obter_dashboard(
         for nome, total in totais_por_categoria.items()
     ]
 
-    # --- Evolução mensal: soma de receitas e despesas por mês (formato "AAAA-MM") ---
     resumo_mensal: dict[str, dict[str, Decimal]] = {}
     for transacao in transacoes:
         chave_mes = transacao.data.strftime("%Y-%m")
@@ -340,3 +328,88 @@ def obter_dashboard(
         gastos_por_categoria=gastos_por_categoria,
         evolucao_mensal=evolucao_mensal,
     )
+
+
+# ==================== TRANSAÇÕES RECORRENTES ====================
+
+@router.post(
+    "/recorrencias",
+    response_model=schemas.TransacaoRecorrenteResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def criar_recorrencia(
+    dados: schemas.TransacaoRecorrenteCreate,
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    if dados.tipo not in ("receita", "despesa"):
+        raise HTTPException(status_code=422, detail="tipo deve ser 'receita' ou 'despesa'")
+    if not (1 <= dados.dia_do_mes <= 28):
+        raise HTTPException(status_code=422, detail="dia_do_mes deve estar entre 1 e 28")
+
+    # Confirma que a conta pertence ao usuário logado
+    _buscar_conta_do_usuario(dados.conta_id, usuario_atual.id, db)
+
+    categoria = db.query(models.Categoria).filter(models.Categoria.id == dados.categoria_id).first()
+    if not categoria:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+
+    nova_recorrencia = models.TransacaoRecorrente(
+        conta_id=dados.conta_id,
+        categoria_id=dados.categoria_id,
+        valor=Decimal(str(dados.valor)),
+        tipo=dados.tipo,
+        dia_do_mes=dados.dia_do_mes,
+    )
+    db.add(nova_recorrencia)
+    db.commit()
+    db.refresh(nova_recorrencia)
+    return nova_recorrencia
+
+
+@router.get("/recorrencias", response_model=list[schemas.TransacaoRecorrenteResponse])
+def listar_recorrencias(
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(models.TransacaoRecorrente)
+        .join(models.Conta)
+        .filter(models.Conta.usuario_id == usuario_atual.id)
+        .all()
+    )
+
+
+@router.delete("/recorrencias/{recorrencia_id}", status_code=status.HTTP_204_NO_CONTENT)
+def desativar_recorrencia(
+    recorrencia_id: uuid.UUID,
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Em vez de apagar de vez, marcamos como inativa (preserva o histórico)."""
+    recorrencia = (
+        db.query(models.TransacaoRecorrente)
+        .join(models.Conta)
+        .filter(
+            models.TransacaoRecorrente.id == recorrencia_id,
+            models.Conta.usuario_id == usuario_atual.id,
+        )
+        .first()
+    )
+    if not recorrencia:
+        raise HTTPException(status_code=404, detail="Recorrência não encontrada")
+
+    recorrencia.ativa = False
+    db.commit()
+
+
+@router.post("/recorrencias/processar", status_code=status.HTTP_200_OK)
+def processar_recorrencias_manualmente(db: Session = Depends(get_db)):
+    """
+    Rota manual para forçar o processamento das recorrências (útil para testes,
+    já que o job automático só roda uma vez por dia).
+    """
+    from app.scheduler import processar_recorrencias
+
+    quantidade = processar_recorrencias(db)
+    return {"transacoes_geradas": quantidade}
