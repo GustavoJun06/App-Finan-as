@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from pydantic import BaseModel, EmailStr
 
 
@@ -51,6 +52,28 @@ class CategoriaCreate(BaseModel):
 class CategoriaResponse(BaseModel):
     id: uuid.UUID
     nome: str
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- Transação ----------
+
+class TransacaoCreate(BaseModel):
+    conta_id: uuid.UUID
+    categoria_id: uuid.UUID
+    valor: float
+    tipo: str  # "receita" ou "despesa"
+    data: date | None = None  # se não informado, usamos a data de hoje
+
+
+class TransacaoResponse(BaseModel):
+    id: uuid.UUID
+    conta_id: uuid.UUID
+    categoria_id: uuid.UUID
+    valor: float
+    tipo: str
+    data: date
 
     class Config:
         from_attributes = True
