@@ -23,3 +23,34 @@ class UsuarioResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# ---------- Conta ----------
+
+class ContaCreate(BaseModel):
+    nome: str
+    tipo: str  # ex: "corrente", "cartao", "dinheiro"
+
+
+class ContaResponse(BaseModel):
+    id: uuid.UUID
+    nome: str
+    tipo: str
+    saldo: float
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- Categoria ----------
+
+class CategoriaCreate(BaseModel):
+    nome: str
+
+
+class CategoriaResponse(BaseModel):
+    id: uuid.UUID
+    nome: str
+
+    class Config:
+        from_attributes = True
