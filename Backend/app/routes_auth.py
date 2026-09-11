@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -31,8 +32,10 @@ def cadastrar_usuario(dados: schemas.UsuarioCreate, db: Session = Depends(get_db
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(email: str, senha: str, db: Session = Depends(get_db)):
-    usuario = db.query(models.Usuario).filter(models.Usuario.email == email).first()
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # O formulário padrão do OAuth2 usa os nomes "username" e "password",
+    # mas no nosso caso o "username" enviado é, na prática, o e-mail
+    usuario = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
 
     # Mensagem de erro genérica de propósito: não revela se o problema foi
     # o e-mail não existir ou a senha estar errada (boa prática de segurança)
@@ -44,8 +47,14 @@ def login(email: str, senha: str, db: Session = Depends(get_db)):
     if not usuario:
         raise credenciais_invalidas
 
-    if not auth.verificar_senha(senha, usuario.senha_hash):
+    if not auth.verificar_senha(form_data.password, usuario.senha_hash):
         raise credenciais_invalidas
 
     token = auth.criar_token_acesso(dados={"sub": str(usuario.id)})
     return schemas.Token(access_token=token)
+
+
+@router.get("/me", response_model=schemas.UsuarioResponse)
+def ler_usuario_atual(usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual)):
+    """Rota protegida de exemplo: só funciona se um token válido for enviado."""
+    return usuario_atual
