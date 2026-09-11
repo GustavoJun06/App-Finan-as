@@ -77,3 +77,18 @@ class TransacaoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---------- Meta ----------
+
+class MetaCreate(BaseModel):
+    valor_alvo: float
+    prazo: date
+
+
+class MetaResponse(BaseModel):
+    id: uuid.UUID
+    valor_alvo: float
+    prazo: date
+    valor_atual: float  # calculado: saldo total das contas do usuário
+    progresso_percentual: float  # calculado: valor_atual / valor_alvo * 100

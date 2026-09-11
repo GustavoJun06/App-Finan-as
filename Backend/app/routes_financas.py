@@ -208,3 +208,74 @@ def deletar_transacao(
 
     db.delete(transacao)
     db.commit()
+
+
+# ==================== METAS ====================
+# O progresso de uma meta é calculado comparando o valor_alvo com o
+# saldo total (soma de todas as contas) do usuário no momento da consulta.
+
+def _calcular_saldo_total(usuario_id: uuid.UUID, db: Session) -> Decimal:
+    contas = db.query(models.Conta).filter(models.Conta.usuario_id == usuario_id).all()
+    return sum((conta.saldo for conta in contas), Decimal("0"))
+
+
+def _montar_resposta_meta(meta: models.Meta, saldo_total: Decimal) -> schemas.MetaResponse:
+    valor_atual = float(saldo_total)
+    valor_alvo = float(meta.valor_alvo)
+    progresso = (valor_atual / valor_alvo * 100) if valor_alvo > 0 else 0
+    progresso = min(progresso, 100)  # trava em 100% mesmo se já ultrapassou a meta
+
+    return schemas.MetaResponse(
+        id=meta.id,
+        valor_alvo=valor_alvo,
+        prazo=meta.prazo,
+        valor_atual=valor_atual,
+        progresso_percentual=round(progresso, 2),
+    )
+
+
+@router.post("/metas", response_model=schemas.MetaResponse, status_code=status.HTTP_201_CREATED)
+def criar_meta(
+    dados: schemas.MetaCreate,
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    nova_meta = models.Meta(
+        valor_alvo=Decimal(str(dados.valor_alvo)),
+        prazo=dados.prazo,
+        usuario_id=usuario_atual.id,
+    )
+    db.add(nova_meta)
+    db.commit()
+    db.refresh(nova_meta)
+
+    saldo_total = _calcular_saldo_total(usuario_atual.id, db)
+    return _montar_resposta_meta(nova_meta, saldo_total)
+
+
+@router.get("/metas", response_model=list[schemas.MetaResponse])
+def listar_metas(
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    metas = db.query(models.Meta).filter(models.Meta.usuario_id == usuario_atual.id).all()
+    saldo_total = _calcular_saldo_total(usuario_atual.id, db)
+    return [_montar_resposta_meta(meta, saldo_total) for meta in metas]
+
+
+@router.delete("/metas/{meta_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deletar_meta(
+    meta_id: uuid.UUID,
+    usuario_atual: models.Usuario = Depends(auth.obter_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    meta = (
+        db.query(models.Meta)
+        .filter(models.Meta.id == meta_id, models.Meta.usuario_id == usuario_atual.id)
+        .first()
+    )
+    if not meta:
+        raise HTTPException(status_code=404, detail="Meta não encontrada")
+
+    db.delete(meta)
+    db.commit()
