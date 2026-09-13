@@ -14,9 +14,19 @@ app = FastAPI(title="Finanças App API")
 
 # Autoriza o frontend (rodando em outra porta) a fazer requisições para esta API.
 # Sem isso, o navegador bloqueia as respostas por política de segurança (CORS).
+import os
+
+# Lista de origens autorizadas a acessar a API. Em desenvolvimento, o frontend
+# roda em localhost:5173. Em produção, adicionamos a URL da Vercel via
+# variável de ambiente FRONTEND_URL (configurada no Railway).
+origens_permitidas = ["http://localhost:5173"]
+frontend_url_producao = os.getenv("FRONTEND_URL")
+if frontend_url_producao:
+    origens_permitidas.append(frontend_url_producao)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=origens_permitidas,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
