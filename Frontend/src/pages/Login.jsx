@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
@@ -10,6 +10,8 @@ export default function Login() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const mensagemSucesso = location.state?.mensagem;
 
   async function handleSubmit(evento) {
     evento.preventDefault(); // evita que o formulário recarregue a página (comportamento padrão do HTML)
@@ -29,6 +31,8 @@ export default function Login() {
   return (
     <div style={{ maxWidth: 360, margin: "80px auto", fontFamily: "sans-serif" }}>
       <h1>Entrar</h1>
+
+      {mensagemSucesso && <p style={{ color: "green" }}>{mensagemSucesso}</p>}
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 12 }}>
