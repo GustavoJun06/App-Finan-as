@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import NavBar from "../components/NavBar";
 
 export default function Dashboard() {
   const [dashboard, setDashboard] = useState(null);
@@ -38,6 +39,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 800, margin: "40px auto", fontFamily: "sans-serif", padding: "0 16px" }}>
+      <NavBar />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1>Meu painel financeiro</h1>
         <button onClick={logout}>Sair</button>
