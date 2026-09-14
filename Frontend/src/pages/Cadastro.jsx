@@ -17,11 +17,7 @@ export default function Cadastro() {
     setCarregando(true);
 
     try {
-      // Diferente do login, o cadastro é enviado como JSON comum
-      // (bate com o schema UsuarioCreate do backend)
       await api.post("/cadastro", { nome, email, senha });
-
-      // Cadastro deu certo: manda para o login com uma mensagem de sucesso
       navigate("/login", { state: { mensagem: "Cadastro realizado! Faça login para continuar." } });
     } catch (erroCapturado) {
       const detalhe = erroCapturado.response?.data?.detail;
@@ -32,57 +28,75 @@ export default function Cadastro() {
   }
 
   return (
-    <div style={{ maxWidth: 360, margin: "80px auto", fontFamily: "sans-serif" }}>
-      <h1>Criar conta</h1>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div className="card" style={{ width: "100%", maxWidth: 380 }}>
+        <div style={{ fontSize: 24, marginBottom: 4 }}>💰</div>
+        <h1 style={{ fontSize: 22, marginBottom: 4 }}>Criar conta</h1>
+        <p className="text-muted" style={{ marginTop: 0, marginBottom: 24, fontSize: 14 }}>
+          Comece a organizar suas finanças
+        </p>
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label>Nome</label>
-          <br />
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <label>Nome</label>
+            <input
+              type="text"
+              className="input"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              style={{ width: "100%" }}
+            />
+          </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>E-mail</label>
-          <br />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
+          <div style={{ marginBottom: 16 }}>
+            <label>E-mail</label>
+            <input
+              type="email"
+              className="input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{ width: "100%" }}
+            />
+          </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Senha</label>
-          <br />
-          <input
-            type="password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            required
-            minLength={6}
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
+          <div style={{ marginBottom: 20 }}>
+            <label>Senha</label>
+            <input
+              type="password"
+              className="input"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              required
+              minLength={6}
+              style={{ width: "100%" }}
+            />
+          </div>
 
-        {erro && <p style={{ color: "red" }}>{erro}</p>}
+          {erro && (
+            <p className="text-expense" style={{ fontSize: 14, marginTop: -8, marginBottom: 16 }}>
+              {erro}
+            </p>
+          )}
 
-        <button type="submit" disabled={carregando} style={{ width: "100%", padding: 10 }}>
-          {carregando ? "Criando conta..." : "Criar conta"}
-        </button>
-      </form>
+          <button type="submit" disabled={carregando} className="btn btn-primary" style={{ width: "100%" }}>
+            {carregando ? "Criando conta..." : "Criar conta"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 16 }}>
-        Já tem conta? <Link to="/login">Entrar</Link>
-      </p>
+        <p style={{ marginTop: 20, fontSize: 14, color: "var(--text-muted)" }}>
+          Já tem conta? <Link to="/login">Entrar</Link>
+        </p>
+      </div>
     </div>
   );
 }

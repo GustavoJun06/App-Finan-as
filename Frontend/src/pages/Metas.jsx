@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import api from "../services/api";
-import NavBar from "../components/NavBar";
+import AppLayout from "../components/AppLayout";
 
 export default function Metas() {
   const [metas, setMetas] = useState([]);
@@ -39,8 +40,7 @@ export default function Metas() {
   }
 
   async function handleExcluir(id) {
-    const confirmar = window.confirm("Excluir esta meta?");
-    if (!confirmar) return;
+    if (!window.confirm("Excluir esta meta?")) return;
     try {
       await api.delete(`/metas/${id}`);
       carregarMetas();
@@ -50,64 +50,83 @@ export default function Metas() {
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: "40px auto", fontFamily: "sans-serif", padding: "0 16px" }}>
-      <NavBar />
-      <h1>Minhas metas</h1>
+    <AppLayout>
+      <h1 style={{ marginBottom: 24 }}>Minhas metas</h1>
 
-      {erro && <p style={{ color: "red" }}>{erro}</p>}
+      {erro && <p className="text-expense">{erro}</p>}
 
-      <form onSubmit={handleSubmit} style={{ marginBottom: 24, display: "flex", gap: 8 }}>
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Valor alvo (ex: 5000)"
-          value={valorAlvo}
-          onChange={(e) => setValorAlvo(e.target.value)}
-          required
-          style={{ padding: 8, flex: 1 }}
-        />
-        <input
-          type="date"
-          value={prazo}
-          onChange={(e) => setPrazo(e.target.value)}
-          required
-          style={{ padding: 8 }}
-        />
-        <button type="submit">Criar meta</button>
-      </form>
+      <div className="card" style={{ marginBottom: 24 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Valor alvo (ex: 5000)"
+            className="input"
+            value={valorAlvo}
+            onChange={(e) => setValorAlvo(e.target.value)}
+            required
+            style={{ flex: 1, minWidth: 160 }}
+          />
+          <input
+            type="date"
+            className="input"
+            value={prazo}
+            onChange={(e) => setPrazo(e.target.value)}
+            required
+          />
+          <button type="submit" className="btn btn-primary">Criar meta</button>
+        </form>
+      </div>
 
       {carregando ? (
-        <p>Carregando...</p>
+        <p className="text-muted">Carregando...</p>
       ) : metas.length === 0 ? (
-        <p>Nenhuma meta cadastrada ainda.</p>
+        <p className="text-muted">Nenhuma meta cadastrada ainda.</p>
       ) : (
-        metas.map((meta) => (
-          <div
-            key={meta.id}
-            style={{ border: "1px solid #ddd", borderRadius: 8, padding: 16, marginBottom: 12 }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <strong>R$ {meta.valor_atual.toFixed(2)} de R$ {meta.valor_alvo.toFixed(2)}</strong>
-              <button onClick={() => handleExcluir(meta.id)}>Excluir</button>
-            </div>
-            <p style={{ margin: "4px 0", color: "#666" }}>Prazo: {meta.prazo}</p>
+        <div style={{ display: "grid", gap: 16 }}>
+          {metas.map((meta) => (
+            <div key={meta.id} className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                <div>
+                  <span className="num" style={{ fontSize: 18 }}>
+                    R$ {meta.valor_atual.toFixed(2)}
+                  </span>
+                  <span className="text-muted"> de R$ {meta.valor_alvo.toFixed(2)}</span>
+                  <div className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
+                    Prazo: {meta.prazo}
+                  </div>
+                </div>
+                <button onClick={() => handleExcluir(meta.id)} className="btn btn-ghost" style={{ padding: 8 }}>
+                  <Trash2 size={15} color="var(--accent-expense)" />
+                </button>
+              </div>
 
-            {/* Barra de progresso simples com CSS puro */}
-            <div style={{ background: "#eee", borderRadius: 4, height: 12, overflow: "hidden" }}>
               <div
                 style={{
-                  width: `${meta.progresso_percentual}%`,
-                  background: meta.progresso_percentual >= 100 ? "#22c55e" : "#4f46e5",
-                  height: "100%",
+                  background: "var(--bg-surface-alt)",
+                  borderRadius: 4,
+                  height: 10,
+                  overflow: "hidden",
+                  marginTop: 16,
                 }}
-              />
+              >
+                <div
+                  style={{
+                    width: `${meta.progresso_percentual}%`,
+                    background:
+                      meta.progresso_percentual >= 100 ? "var(--accent-income)" : "var(--accent-primary)",
+                    height: "100%",
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              </div>
+              <p className="text-muted num" style={{ margin: "6px 0 0", fontSize: 13 }}>
+                {meta.progresso_percentual}% concluído
+              </p>
             </div>
-            <p style={{ margin: "4px 0 0", fontSize: 14, color: "#666" }}>
-              {meta.progresso_percentual}% concluído
-            </p>
-          </div>
-        ))
+          ))}
+        </div>
       )}
-    </div>
+    </AppLayout>
   );
 }

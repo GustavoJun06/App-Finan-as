@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import api from "../services/api";
-import NavBar from "../components/NavBar";
+import AppLayout from "../components/AppLayout";
 
 export default function Contas() {
   const [contas, setContas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
-  // Estado do formulário (serve tanto para criar quanto para editar)
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("corrente");
-  const [editandoId, setEditandoId] = useState(null); // null = criando nova, senão = editando essa conta
+  const [editandoId, setEditandoId] = useState(null);
 
   async function carregarContas() {
     setCarregando(true);
@@ -44,23 +44,19 @@ export default function Contas() {
     evento.preventDefault();
     try {
       if (editandoId) {
-        // Editando uma conta existente
         await api.put(`/contas/${editandoId}`, { nome, tipo });
       } else {
-        // Criando uma conta nova
         await api.post("/contas", { nome, tipo });
       }
       cancelarEdicao();
-      carregarContas(); // recarrega a lista para mostrar a mudança
+      carregarContas();
     } catch {
       setErro("Não foi possível salvar a conta");
     }
   }
 
   async function handleExcluir(id) {
-    const confirmar = window.confirm("Tem certeza que deseja excluir esta conta?");
-    if (!confirmar) return;
-
+    if (!window.confirm("Tem certeza que deseja excluir esta conta?")) return;
     try {
       await api.delete(`/contas/${id}`);
       carregarContas();
@@ -70,65 +66,68 @@ export default function Contas() {
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: "40px auto", fontFamily: "sans-serif", padding: "0 16px" }}>
-      <NavBar />
-      <h1>Minhas contas</h1>
+    <AppLayout>
+      <h1 style={{ marginBottom: 24 }}>Minhas contas</h1>
 
-      {erro && <p style={{ color: "red" }}>{erro}</p>}
+      {erro && <p className="text-expense">{erro}</p>}
 
-      {/* Formulário de criação/edição */}
-      <form onSubmit={handleSubmit} style={{ marginBottom: 24, display: "flex", gap: 8 }}>
-        <input
-          type="text"
-          placeholder="Nome da conta"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          required
-          style={{ padding: 8, flex: 1 }}
-        />
-        <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={{ padding: 8 }}>
-          <option value="corrente">Conta corrente</option>
-          <option value="cartao">Cartão</option>
-          <option value="dinheiro">Dinheiro</option>
-        </select>
-        <button type="submit">{editandoId ? "Salvar" : "Adicionar"}</button>
-        {editandoId && (
-          <button type="button" onClick={cancelarEdicao}>
-            Cancelar
+      <div className="card" style={{ marginBottom: 24 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label>Nome da conta</label>
+            <input
+              type="text"
+              className="input"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="input">
+              <option value="corrente">Conta corrente</option>
+              <option value="cartao">Cartão</option>
+              <option value="dinheiro">Dinheiro</option>
+            </select>
+          </div>
+          <button type="submit" className="btn btn-primary">
+            {editandoId ? "Salvar" : "Adicionar"}
           </button>
-        )}
-      </form>
+          {editandoId && (
+            <button type="button" onClick={cancelarEdicao} className="btn btn-ghost">
+              Cancelar
+            </button>
+          )}
+        </form>
+      </div>
 
-      {/* Lista de contas */}
       {carregando ? (
-        <p>Carregando...</p>
+        <p className="text-muted">Carregando...</p>
       ) : contas.length === 0 ? (
-        <p>Nenhuma conta cadastrada ainda.</p>
+        <p className="text-muted">Nenhuma conta cadastrada ainda.</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Saldo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {contas.map((conta) => (
-              <tr key={conta.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td>{conta.nome}</td>
-                <td>{conta.tipo}</td>
-                <td>R$ {conta.saldo.toFixed(2)}</td>
-                <td>
-                  <button onClick={() => iniciarEdicao(conta)}>Editar</button>{" "}
-                  <button onClick={() => handleExcluir(conta.id)}>Excluir</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="row-list">
+          {contas.map((conta) => (
+            <div key={conta.id} className="row-item">
+              <div>
+                <div style={{ fontWeight: 600 }}>{conta.nome}</div>
+                <div className="text-muted" style={{ fontSize: 13 }}>{conta.tipo}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <span className="num">R$ {conta.saldo.toFixed(2)}</span>
+                <button onClick={() => iniciarEdicao(conta)} className="btn btn-ghost" style={{ padding: 8 }}>
+                  <Pencil size={15} />
+                </button>
+                <button onClick={() => handleExcluir(conta.id)} className="btn btn-ghost" style={{ padding: 8 }}>
+                  <Trash2 size={15} color="var(--accent-expense)" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
-    </div>
+    </AppLayout>
   );
 }
